@@ -1,0 +1,68 @@
+Concurrent Write & Read Lock (FlightServerError)
+
+PROBLEM DESCRIPTION:
+During feature group execution, running fg.read() directly after or inside the same script as fg.insert() results in a server-side Arrow Flight query crash:
+
+pyarrow._flight.FlightServerError: Set changed size during iteration. Detail: Failed
+FeatureStoreException: Could not read data using Hopsworks Query Service.
+
+ROOT CAUSE:
+fg.insert() triggers an asynchronous backend materialization job on Apache Spark/Flink to write Parquet files and index HUDI metadata. Calling the offline DuckDB query engine (fg.read()) while the backend job is actively mutating the metadata causes internal thread-locking errors in the shared serverless cluster engine.
+
+SOLUTION:
+
+Approach A: Separate Execution Contexts
+Keep ingestion (ingest.py) and reading/verification (eda.py) in completely separate scripts. Run the verification script only after the backend job finishes.
+
+Approach B: Bypass Arrow Flight via the Online Store
+Read directly from the MySQL/RonDB online storage layer to avoid DuckDB read-locks during data verification:
+
+Reads directly from the online storage layer without hitting DuckDB
+df_verified = fg.read(online=True)
+print(f"Verified {df_verified.shape[0]} rows.")
+
+Auto-Restarting Ingestion Jobs
+
+PROBLEM DESCRIPTION:
+Stopping a failed or hanging materialization job from the Hopsworks UI results in the job immediately restarting itself on the cluster.
+
+ROOT CAUSE:
+The local Python process running ingest_features.py (or a retrying loop in an active Jupyter notebook kernel) remains alive. The client SDK continuously retries failed REST API requests, sending job-creation commands back to the Hopsworks API whenever the remote job is stopped.
+
+SOLUTION:
+
+Kill Local Client Processes: Terminate the local terminal execution, or restart the Jupyter notebook kernel (Ctrl + C or Kernel -> Restart).
+
+Stop and Delete Job: Navigate to Hopsworks UI -> Jobs, click Stop on the running job, then click Delete to purge the backend queue.
+
+Re-ingest Without Process Blocking: Drop the corrupted feature group version and re-ingest to a clean version without setting client-side blocking flags (wait_for_job=True).
+
+DNS Resolution Failure (NameResolutionError / gaierror)
+
+PROBLEM DESCRIPTION:
+Attempting to connect to Hopsworks via hopsworks.login() raises a network resolution exception:
+
+gaierror: Name or service not known: eu-west.cloud.hopsworks.ai
+ConnectionError: Failed to resolve 'eu-west.cloud.hopsworks.ai'
+
+ROOT CAUSE:
+The client environment contains corrupted cached credentials pointing to an unreachable region endpoint, or local DNS settings fail to resolve the cloud host domain.
+
+SOLUTION:
+
+Explicit Host Parameter: Pass the global SaaS domain directly into the login function:
+
+import hopsworks
+
+project = hopsworks.login(
+host="c.app.hopsworks.ai",
+port=443
+)
+
+Clear Cached Credentials: Purge invalid cached API configs stored in your operating system user directory:
+
+Windows: Delete all files inside %USERPROFILE%.hopsworks\
+
+Linux/macOS: Delete all files inside ~/.hopsworks/
+
+Flush Network Cache (Windows): Run 'ipconfig /flushdns' in an elevated terminal to clear stale host cache.
