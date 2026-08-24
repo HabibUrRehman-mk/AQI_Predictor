@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import logging
 import os
+import sys
 import hopsworks
 import numpy as np
 import pandas as pd
@@ -25,7 +26,7 @@ EVENT_TIME = "time"
 
 
 def fetch_raw_data(start_date: str, end_date: str) -> pd.DataFrame:
-    """Fetches weather and air quality for the rolling window directly into memory."""
+    """Fetches weather and air quality data safely with status checks."""
     weather_url = "https://archive-api.open-meteo.com/v1/archive"
     weather_params = {
         "latitude": LATITUDE,
@@ -52,14 +53,24 @@ def fetch_raw_data(start_date: str, end_date: str) -> pd.DataFrame:
         "timezone": "UTC",
     }
 
-    log.info("Fetching API data from %s to %s...", start_date, end_date)
-    res_weather = requests.get(weather_url, params=weather_params, timeout=30).json()
-    res_aq = requests.get(aq_url, params=aq_params, timeout=30).json()
+    log.info("Fetching raw API payload (%s to %s)...", start_date, end_date)
+    
+    res_weather = requests.get(weather_url, params=weather_params, timeout=30)
+    res_weather.raise_for_status()
+    
+    res_aq = requests.get(aq_url, params=aq_params, timeout=30)
+    res_aq.raise_for_status()
 
-    df_weather = pd.DataFrame(res_weather["hourly"])
+    w_data = res_weather.json()
+    aq_data = res_aq.json()
+
+    if "hourly" not in w_data or "hourly" not in aq_data:
+        raise ValueError("Invalid payload: Missing 'hourly' key from Open-Meteo response.")
+
+    df_weather = pd.DataFrame(w_data["hourly"])
     df_weather["time"] = pd.to_datetime(df_weather["time"])
 
-    df_aq = pd.DataFrame(res_aq["hourly"])
+    df_aq = pd.DataFrame(aq_data["hourly"])
     df_aq["time"] = pd.to_datetime(df_aq["time"])
 
     df = pd.merge(df_weather, df_aq, on="time", how="inner")
@@ -68,7 +79,7 @@ def fetch_raw_data(start_date: str, end_date: str) -> pd.DataFrame:
 
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Computes features across the dataset."""
+    """Computes full feature set for the timeline."""
     df = df.sort_values("time").reset_index(drop=True)
 
     # 1. Wind Vector Components
@@ -76,7 +87,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["wind_u"] = -df["wind_speed_10m"] * np.sin(wind_rad)
     df["wind_v"] = -df["wind_speed_10m"] * np.cos(wind_rad)
 
-    # 2. Temporal & Cyclical Features
+    # 2. Temporal Features
     df["hour"] = df["time"].dt.hour.astype("int64")
     df["dayofweek"] = df["time"].dt.dayofweek.astype("int64")
     df["month"] = df["time"].dt.month.astype("int64")
@@ -105,15 +116,15 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["aqi_change_rate_1h"] = (df["pm2_5_lag_1h"] - df["pm2_5"].shift(2)) / (df["pm2_5"].shift(2) + 1e-5)
     df["aqi_change_rate_24h"] = (df["pm2_5_lag_1h"] - df["pm2_5_lag_24h"]) / (df["pm2_5_lag_24h"] + 1e-5)
 
-    # 6. Targets
+    # 6. Target Horizons
     df["target_aqi_24h"] = df["us_aqi"].shift(-24)
     df["target_aqi_48h"] = df["us_aqi"].shift(-48)
     df["target_aqi_72h"] = df["us_aqi"].shift(-72)
 
-    # Drop boundaries where lag calculations created NaNs
+    # Drop incomplete boundary rows
     df = df.dropna(subset=["us_aqi_lag_72h"]).reset_index(drop=True)
 
-    # Hopsworks formatting
+    # Hopsworks datatypes alignment
     df["city"] = df["city"].astype(str)
     df["us_aqi"] = df["us_aqi"].astype("int64")
     df["time"] = pd.to_datetime(df["time"]).dt.tz_localize("UTC").dt.tz_localize(None).astype("datetime64[us]")
@@ -123,22 +134,18 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     if not HOPSWORKS_API_KEY:
-        raise ValueError("HOPSWORKS_API_KEY environment variable is not set!")
+        log.error("CRITICAL: HOPSWORKS_API_KEY environment variable is missing!")
+        sys.exit(1)
 
     today = datetime.now()
     seven_days_ago = today - timedelta(days=7)
 
-    # 1. Fetch raw data into memory
-    raw_df = fetch_raw_data(
-        start_date=seven_days_ago.strftime("%Y-%m-%d"),
-        end_date=today.strftime("%Y-%m-%d")
-    )
+    start_str = seven_days_ago.strftime("%Y-%m-%d")
+    end_str = today.strftime("%Y-%m-%d")
 
-    # 2. Engineer features in memory
-    log.info("Engineering features across memory DataFrame...")
+    raw_df = fetch_raw_data(start_str, end_str)
     features_df = engineer_features(raw_df)
 
-    # 3. Connect to Hopsworks and insert directly
     log.info("Connecting to Hopsworks Feature Store...")
     project = hopsworks.login(
         host=HOPSWORKS_HOST,
@@ -157,9 +164,9 @@ def main():
         online_enabled=True,
     )
 
-    log.info("Upserting %d rows into Feature Group v%d...", len(features_df), fg.version)
+    log.info("Upserting %d records into Feature Group v%d...", len(features_df), fg.version)
     fg.insert(features_df, write_options={"wait_for_job": True})
-    log.info("Hourly execution completed successfully.")
+    log.info("Execution finished successfully.")
 
 
 if __name__ == "__main__":
