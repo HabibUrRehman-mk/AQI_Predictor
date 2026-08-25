@@ -2,15 +2,21 @@ from datetime import datetime, timedelta
 import logging
 import os
 import sys
+import traceback
+
+from dotenv import load_dotenv
 import hopsworks
 import numpy as np
 import pandas as pd
 import requests
 
+# Load environment variables from .env file
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-# Config
+# Configuration
 CITY_NAME = "Faisalabad"
 LATITUDE = 31.4187
 LONGITUDE = 73.0791
@@ -25,148 +31,144 @@ PRIMARY_KEY = ["city", "time"]
 EVENT_TIME = "time"
 
 
-def fetch_raw_data(start_date: str, end_date: str) -> pd.DataFrame:
-    """Fetches weather and air quality data safely with status checks."""
-    weather_url = "https://archive-api.open-meteo.com/v1/archive"
-    weather_params = {
-        "latitude": LATITUDE,
-        "longitude": LONGITUDE,
-        "start_date": start_date,
-        "end_date": end_date,
-        "hourly": [
-            "temperature_2m",
-            "relative_humidity_2m",
-            "surface_pressure",
-            "wind_speed_10m",
-            "wind_direction_10m",
-        ],
-        "timezone": "UTC",
-    }
+def fetch_raw_data():
+    """Fetch raw weather and air quality data from Open-Meteo."""
+    end_date = datetime.now()
+    # Fetch 14 days of context to safely calculate lags up to 72h and target leads up to 72h
+    start_date = end_date - timedelta(days=14)
 
-    aq_url = "https://air-quality-api.open-meteo.com/v1/air-quality"
-    aq_params = {
-        "latitude": LATITUDE,
-        "longitude": LONGITUDE,
-        "start_date": start_date,
-        "end_date": end_date,
-        "hourly": ["pm2_5", "pm10", "nitrogen_dioxide", "ozone", "us_aqi"],
-        "timezone": "UTC",
-    }
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
 
-    log.info("Fetching raw API payload (%s to %s)...", start_date, end_date)
-    
-    res_weather = requests.get(weather_url, params=weather_params, timeout=30)
-    res_weather.raise_for_status()
-    
-    res_aq = requests.get(aq_url, params=aq_params, timeout=30)
-    res_aq.raise_for_status()
+    log.info(f"Requesting raw data from Open-Meteo ({start_str} to {end_str})...")
 
-    w_data = res_weather.json()
-    aq_data = res_aq.json()
+    weather_url = (
+        f"https://api.open-meteo.com/v1/forecast?"
+        f"latitude={LATITUDE}&longitude={LONGITUDE}"
+        f"&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m"
+        f"&start_date={start_str}&end_date={end_str}&timezone=auto"
+    )
 
-    if "hourly" not in w_data or "hourly" not in aq_data:
-        raise ValueError("Invalid payload: Missing 'hourly' key from Open-Meteo response.")
+    aqi_url = (
+        f"https://air-quality-api.open-meteo.com/v1/air-quality?"
+        f"latitude={LATITUDE}&longitude={LONGITUDE}"
+        f"&hourly=pm10,pm2_5,nitrogen_dioxide,ozone,us_aqi"
+        f"&start_date={start_str}&end_date={end_str}&timezone=auto"
+    )
 
-    df_weather = pd.DataFrame(w_data["hourly"])
-    df_weather["time"] = pd.to_datetime(df_weather["time"])
+    w_res = requests.get(weather_url).json()
+    a_res = requests.get(aqi_url).json()
 
-    df_aq = pd.DataFrame(aq_data["hourly"])
-    df_aq["time"] = pd.to_datetime(df_aq["time"])
+    df_w = pd.DataFrame(w_res["hourly"])
+    df_a = pd.DataFrame(a_res["hourly"])
 
-    df = pd.merge(df_weather, df_aq, on="time", how="inner")
+    df = pd.merge(df_w, df_a, on="time")
+    df["time"] = pd.to_datetime(df["time"])
     df["city"] = CITY_NAME
+
     return df
 
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Computes full feature set for the timeline."""
-    df = df.sort_values("time").reset_index(drop=True)
+    """Engineer all required features matching Hopsworks Feature Group v6 schema."""
+    df = df.sort_values("time").copy()
 
-    # 1. Wind Vector Components
+    # 1. Cast integer API features
+    df["wind_direction_10m"] = df["wind_direction_10m"].astype("int64")
+
+    # 2. Wind U/V components
     wind_rad = np.radians(df["wind_direction_10m"])
-    df["wind_u"] = -df["wind_speed_10m"] * np.sin(wind_rad)
-    df["wind_v"] = -df["wind_speed_10m"] * np.cos(wind_rad)
+    df["wind_u"] = (-df["wind_speed_10m"] * np.sin(wind_rad)).astype(float)
+    df["wind_v"] = (-df["wind_speed_10m"] * np.cos(wind_rad)).astype(float)
 
-    # 2. Temporal Features
+    # 3. Calendar & Cyclical features
     df["hour"] = df["time"].dt.hour.astype("int64")
     df["dayofweek"] = df["time"].dt.dayofweek.astype("int64")
     df["month"] = df["time"].dt.month.astype("int64")
     df["dayofyear"] = df["time"].dt.dayofyear.astype("int64")
-    df["is_weekend"] = (df["dayofweek"] >= 5).astype("int64")
+    df["is_weekend"] = df["dayofweek"].isin([5, 6]).astype("int64")
 
-    df["sin_hour"] = np.sin(2 * np.pi * df["hour"] / 24.0)
-    df["cos_hour"] = np.cos(2 * np.pi * df["hour"] / 24.0)
-    df["sin_month"] = np.sin(2 * np.pi * df["month"] / 12.0)
-    df["cos_month"] = np.cos(2 * np.pi * df["month"] / 12.0)
+    df["sin_hour"] = np.sin(2 * np.pi * df["hour"] / 24.0).astype(float)
+    df["cos_hour"] = np.cos(2 * np.pi * df["hour"] / 24.0).astype(float)
+    df["sin_month"] = np.sin(2 * np.pi * df["month"] / 12.0).astype(float)
+    df["cos_month"] = np.cos(2 * np.pi * df["month"] / 12.0).astype(float)
 
-    # 3. Lag Features
-    df["pm2_5_lag_1h"] = df["pm2_5"].shift(1)
-    df["pm2_5_lag_24h"] = df["pm2_5"].shift(24)
-    df["us_aqi_lag_1h"] = df["us_aqi"].shift(1)
-    df["us_aqi_lag_24h"] = df["us_aqi"].shift(24)
-    df["us_aqi_lag_48h"] = df["us_aqi"].shift(48)
-    df["us_aqi_lag_72h"] = df["us_aqi"].shift(72)
+    # 4. Ratios & Seasonal features
+    df["pm25_pm10_ratio"] = (df["pm2_5"] / (df["pm10"] + 1e-6)).astype(float)
+    df["is_burning_season"] = df["month"].isin([10, 11, 12]).astype("int64")
 
-    # 4. Rolling Features
-    df["pm2_5_roll_mean_6h"] = df["pm2_5"].shift(1).rolling(window=6).mean()
-    df["pm2_5_roll_mean_24h"] = df["pm2_5"].shift(1).rolling(window=24).mean()
-    df["us_aqi_roll_mean_24h"] = df["us_aqi"].shift(1).rolling(window=24).mean()
+    # 5. Lag features
+    df["pm2_5_lag_1h"] = df["pm2_5"].shift(1).astype(float)
+    df["pm2_5_lag_24h"] = df["pm2_5"].shift(24).astype(float)
+    df["us_aqi_lag_1h"] = df["us_aqi"].shift(1).astype(float)
+    df["us_aqi_lag_24h"] = df["us_aqi"].shift(24).astype(float)
+    df["us_aqi_lag_48h"] = df["us_aqi"].shift(48).astype(float)
+    df["us_aqi_lag_72h"] = df["us_aqi"].shift(72).astype(float)
+    df["wind_speed_lag_24h"] = df["wind_speed_10m"].shift(24).astype(float)
+    df["humidity_lag_24h"] = df["relative_humidity_2m"].shift(24).astype(float)
 
-    # 5. Rates of Change
-    df["aqi_change_rate_1h"] = (df["pm2_5_lag_1h"] - df["pm2_5"].shift(2)) / (df["pm2_5"].shift(2) + 1e-5)
-    df["aqi_change_rate_24h"] = (df["pm2_5_lag_1h"] - df["pm2_5_lag_24h"]) / (df["pm2_5_lag_24h"] + 1e-5)
+    # 6. Rolling Statistics
+    df["pm2_5_roll_mean_6h"] = df["pm2_5"].rolling(6).mean().astype(float)
+    df["pm2_5_roll_mean_24h"] = df["pm2_5"].rolling(24).mean().astype(float)
+    df["pm2_5_roll_std_24h"] = df["pm2_5"].rolling(24).std().astype(float)
+    df["us_aqi_roll_mean_24h"] = df["us_aqi"].rolling(24).mean().astype(float)
+    df["us_aqi_roll_std_24h"] = df["us_aqi"].rolling(24).std().astype(float)
+    df["us_aqi_roll_min_24h"] = df["us_aqi"].rolling(24).min().astype(float)
+    df["us_aqi_roll_max_24h"] = df["us_aqi"].rolling(24).max().astype(float)
 
-    # 6. Target Horizons
-    df["target_aqi_24h"] = df["us_aqi"].shift(-24)
-    df["target_aqi_48h"] = df["us_aqi"].shift(-48)
-    df["target_aqi_72h"] = df["us_aqi"].shift(-72)
+    # 7. AQI Change Rates
+    df["aqi_change_rate_1h"] = (df["us_aqi"] - df["us_aqi_lag_1h"]).astype(float)
+    df["aqi_change_rate_24h"] = (df["us_aqi"] - df["us_aqi_lag_24h"]).astype(float)
 
-    # Drop incomplete boundary rows
-    df = df.dropna(subset=["us_aqi_lag_72h"]).reset_index(drop=True)
+    # 8. Target variables (Lead predictions for future AQI)
+    df["target_aqi_24h"] = df["us_aqi"].shift(-24).astype(float)
+    df["target_aqi_48h"] = df["us_aqi"].shift(-48).astype(float)
+    df["target_aqi_72h"] = df["us_aqi"].shift(-72).astype(float)
 
-    # Hopsworks datatypes alignment
-    df["city"] = df["city"].astype(str)
-    df["us_aqi"] = df["us_aqi"].astype("int64")
-    df["time"] = pd.to_datetime(df["time"]).dt.tz_localize("UTC").dt.tz_localize(None).astype("datetime64[us]")
+    # CRITICAL FIX: Only drop rows missing HISTORICAL lags (first 72h of fetch window)
+    # Do NOT drop rows with NaN targets (recent rows up to current hour)
+    lag_cols = [c for c in df.columns if "lag" in c or "roll" in c]
+    df = df.dropna(subset=lag_cols).reset_index(drop=True)
 
     return df
 
 
 def main():
-    if not HOPSWORKS_API_KEY:
-        log.error("CRITICAL: HOPSWORKS_API_KEY environment variable is missing!")
+    try:
+        if not HOPSWORKS_API_KEY:
+            raise ValueError("HOPSWORKS_API_KEY environment variable is missing or empty!")
+
+        raw_df = fetch_raw_data()
+        features_df = engineer_features(raw_df)
+
+        log.info("Connecting to Hopsworks Feature Store...")
+        project = hopsworks.login(
+            host=HOPSWORKS_HOST,
+            api_key_value=HOPSWORKS_API_KEY,
+            project=PROJECT_NAME,
+        )
+        fs = project.get_feature_store()
+
+        fg = fs.get_feature_group(
+            name=FEATURE_GROUP_NAME,
+            version=FEATURE_GROUP_VERSION,
+        )
+
+        log.info(f"Upserting {len(features_df)} rows (current hour + updated target history) to Feature Group v{FEATURE_GROUP_VERSION}...")
+
+        try:
+            fg.insert(features_df, write_options={"wait_for_job": False})
+        except Exception as e:
+            if "No materialization job was found" in str(e):
+                log.warning("Data uploaded successfully (materialization job check skipped for local Python engine).")
+            else:
+                raise e
+        log.info("Successfully updated Feature Group!")
+
+    except Exception as e:
+        log.error("Pipeline failure encountered!")
+        log.error(traceback.format_exc())
         sys.exit(1)
-
-    today = datetime.now()
-    seven_days_ago = today - timedelta(days=7)
-
-    start_str = seven_days_ago.strftime("%Y-%m-%d")
-    end_str = today.strftime("%Y-%m-%d")
-
-    raw_df = fetch_raw_data(start_str, end_str)
-    features_df = engineer_features(raw_df)
-
-    log.info("Connecting to Hopsworks Feature Store...")
-    project = hopsworks.login(
-        host=HOPSWORKS_HOST,
-        port=443,
-        project=PROJECT_NAME,
-        api_key_value=HOPSWORKS_API_KEY,
-    )
-    fs = project.get_feature_store()
-
-    fg = fs.get_or_create_feature_group(
-        name=FEATURE_GROUP_NAME,
-        version=FEATURE_GROUP_VERSION,
-        primary_key=PRIMARY_KEY,
-        event_time=EVENT_TIME,
-        time_travel_format="HUDI",
-        online_enabled=True,
-    )
-
-    log.info("Upserting %d records into Feature Group v%d...", len(features_df), fg.version)
-    fg.insert(features_df, write_options={"wait_for_job": True})
-    log.info("Execution finished successfully.")
 
 
 if __name__ == "__main__":
