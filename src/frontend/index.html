@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AQI Horizon</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="container">
+        <header class="header">
+            <div>
+                <p class="eyebrow">AIR QUALITY INTELLIGENCE</p>
+                <h1>AQI Horizon</h1>
+                <p class="subtitle">
+                    Machine-learning forecasts for the next 72 hours.
+                </p>
+            </div>
+            <div class="status" id="status">Ready</div>
+        </header>
+
+        <section class="search-card">
+            <div class="field">
+                <label for="city">City</label>
+                <input id="city" value="Faisalabad">
+            </div>
+            <div class="field">
+                <label for="latitude">Latitude</label>
+                <input id="latitude" type="number" step="any" value="31.4187">
+            </div>
+            <div class="field">
+                <label for="longitude">Longitude</label>
+                <input id="longitude" type="number" step="any" value="73.0791">
+            </div>
+            <button id="predict-button">Get forecast</button>
+        </section>
+
+        <section class="location">
+            <div>
+                <span class="muted">Location</span>
+                <h2 id="location-name">Faisalabad</h2>
+            </div>
+            <p id="updated-at">Not updated yet</p>
+        </section>
+
+        <section class="metrics">
+            <article class="metric current">
+                <span>Current AQI</span>
+                <strong id="current-aqi">—</strong>
+                <small>Open-Meteo observation</small>
+            </article>
+            <article class="metric">
+                <span>Forecast · 24h</span>
+                <strong id="aqi-24">—</strong>
+                <small>Predicted AQI</small>
+            </article>
+            <article class="metric">
+                <span>Forecast · 48h</span>
+                <strong id="aqi-48">—</strong>
+                <small>Predicted AQI</small>
+            </article>
+            <article class="metric">
+                <span>Forecast · 72h</span>
+                <strong id="aqi-72">—</strong>
+                <small>Predicted AQI</small>
+            </article>
+        </section>
+
+        <section class="weather-card">
+            <div class="section-heading">
+                <h2>Current conditions</h2>
+                <span>Live API data</span>
+            </div>
+            <div class="weather-grid">
+                <div><span>Temperature</span><strong id="temperature">—</strong></div>
+                <div><span>Humidity</span><strong id="humidity">—</strong></div>
+                <div><span>Pressure</span><strong id="pressure">—</strong></div>
+                <div><span>Wind</span><strong id="wind">—</strong></div>
+            </div>
+        </section>
+
+        <p class="error" id="error"></p>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

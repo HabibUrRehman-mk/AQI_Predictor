@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_DIR: /app/models
+      ALLOWED_ORIGINS: http://localhost:8080
+    volumes:
+      - ./backend/models:/app/models:ro
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro

@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+httpx
+pandas
+numpy
+scikit-learn
+joblib
+pyarrow
+xgboost==3.4.1
