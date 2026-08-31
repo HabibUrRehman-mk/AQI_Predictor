@@ -29,7 +29,7 @@ jobs:
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
           HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
-        run: src/workflows/model_retrain.py
+        run: python src/workflows/model_retrain.py
 
       - name: Upload run artifacts
         if: always()
