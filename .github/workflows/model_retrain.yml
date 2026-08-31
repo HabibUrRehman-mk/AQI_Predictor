@@ -1,0 +1,43 @@
+name: Retrain AQI models
+
+on:
+  schedule:
+    - cron: "0 21 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+            python -m pip install --upgrade pip 
+            pip install hopsworks hsml pandas numpy scikit-learn catboost joblib pyarrow
+
+      - name: Run retraining script
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+        run: src/workflows/model_retrain.py
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retrain-artifacts
+          path: |
+            artifacts_aqi_predictor_24h/
+            artifacts_aqi_predictor_48h/
+            artifacts_aqi_predictor_72h/
+          retention-days: 30
