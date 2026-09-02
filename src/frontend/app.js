@@ -1,7 +1,9 @@
 const API_URL = "http://localhost:8000";
 const button = document.querySelector("#predict-button");
+const refreshButton = document.querySelector("#refresh-models");
 const status = document.querySelector("#status");
 const errorBox = document.querySelector("#error");
+const modelState = document.querySelector("#model-state");
 
 function setText(id, value) {
     document.querySelector(id).textContent = value;
@@ -10,6 +12,25 @@ function setText(id, value) {
 function format(value, suffix = "") {
     if (value === null || value === undefined) return "—";
     return `${Number(value).toFixed(1)}${suffix}`;
+}
+
+async function refreshModels() {
+    try {
+        modelState.textContent = "Refreshing model cache…";
+        const response = await fetch(`${API_URL}/admin/models/download`, { method: "POST" });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Model refresh failed");
+        }
+
+        modelState.textContent = `Loaded: ${data.models.join(", ")}`;
+        return data;
+    } catch (error) {
+        modelState.textContent = "Model cache unavailable";
+        errorBox.textContent = error.message;
+        throw error;
+    }
 }
 
 async function loadPrediction() {
@@ -21,17 +42,10 @@ async function loadPrediction() {
     const latitude = document.querySelector("#latitude").value;
     const longitude = document.querySelector("#longitude").value;
 
-    const query = new URLSearchParams({
-        city,
-        latitude,
-        longitude,
-    });
+    const query = new URLSearchParams({ city, latitude, longitude });
 
     try {
-        const response = await fetch(
-            `${API_URL}/api/predict?${query.toString()}`
-        );
-
+        const response = await fetch(`${API_URL}/api/predict?${query.toString()}`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -49,11 +63,7 @@ async function loadPrediction() {
         setText("#pressure", format(data.weather.surface_pressure, " hPa"));
         setText("#wind", format(data.weather.wind_speed_10m, " km/h"));
 
-        setText(
-            "#updated-at",
-            `Updated ${new Date(data.timestamp).toLocaleString()}`
-        );
-
+        setText("#updated-at", `Updated ${new Date(data.timestamp).toLocaleString()}`);
         status.textContent = "Live";
     } catch (error) {
         status.textContent = "Error";
@@ -64,4 +74,14 @@ async function loadPrediction() {
 }
 
 button.addEventListener("click", loadPrediction);
-window.addEventListener("load", loadPrediction);
+refreshButton.addEventListener("click", () => {
+    refreshModels().catch(() => undefined);
+});
+window.addEventListener("load", async () => {
+    try {
+        await refreshModels();
+    } catch (error) {
+        // ignore and allow user to trigger manually
+    }
+    await loadPrediction();
+});

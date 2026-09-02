@@ -5,11 +5,10 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      MODEL_DIR: /app/models
-      ALLOWED_ORIGINS: http://localhost:8080
+    env_file:
+      - .env
     volumes:
-      - ./backend/models:/app/models:ro
+      - backend_cache:/tmp/aqi_model_cache
 
   frontend:
     image: nginx:alpine
@@ -17,3 +16,6 @@ services:
       - "8080:80"
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
+
+volumes:
+  backend_cache:

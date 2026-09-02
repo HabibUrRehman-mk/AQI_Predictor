@@ -1,16 +1,23 @@
+# --- Builder Stage ---
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefix=/install -r requirements.txt
+
+# --- Final Stage ---
 FROM python:3.12-slim
 
 WORKDIR /app
 
-ENV PYTHONPATH=/app
-ENV MODEL_DIR=/app/models
-
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY backend/app ./app
-COPY backend/models ./models
-
-EXPOSE 8000
+COPY --from=builder /install /usr/local
+COPY backend/ .
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

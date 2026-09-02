@@ -2,10 +2,10 @@ import asyncio
 
 import httpx
 import pandas as pd
+from app.core.config import settings
 
-
-WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
-AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+WEATHER_URL = settings.WEATHER_URL
+AQ_URL = settings.AQ_URL
 
 WEATHER_VARIABLES = [
     "temperature_2m",
@@ -15,7 +15,7 @@ WEATHER_VARIABLES = [
     "wind_direction_10m",
 ]
 
-AIR_QUALITY_VARIABLES = [
+AQ_VARIABLES = [
     "pm2_5",
     "pm10",
     "nitrogen_dioxide",
@@ -24,55 +24,58 @@ AIR_QUALITY_VARIABLES = [
 ]
 
 
+async def fetch_recent_data(
+    latitude: float,
+    longitude: float,
+    timeout: float,
+    past_days: int = 5,
+) -> pd.DataFrame:
+    """Fetch the last n days of hourly weather and AQ data required for lag features."""
+    weather_params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "past_days": past_days,
+        "forecast_days": 1,
+        "hourly": WEATHER_VARIABLES,
+        "timezone": "UTC",
+    }
+    aq_params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "past_days": past_days,
+        "forecast_days": 1,
+        "hourly": AQ_VARIABLES,
+        "timezone": "UTC",
+    }
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        weather_response, aq_response = await asyncio.gather(
+            client.get(WEATHER_URL, params=weather_params),
+            client.get(AQ_URL, params=aq_params),
+        )
+
+    weather_response.raise_for_status()
+    aq_response.raise_for_status()
+
+    weather_df = pd.DataFrame(weather_response.json()["hourly"])
+    aq_df = pd.DataFrame(aq_response.json()["hourly"])
+
+    weather_df["time"] = pd.to_datetime(weather_df["time"], utc=True)
+    aq_df["time"] = pd.to_datetime(aq_df["time"], utc=True)
+
+    merged_df = pd.merge(weather_df, aq_df, on="time", how="inner")
+    return merged_df.sort_values("time").reset_index(drop=True)
+
+
 async def fetch_data(
     latitude: float,
     longitude: float,
     timeout: float,
 ) -> pd.DataFrame:
-    common_params = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "past_days": 4,
-        "forecast_days": 3,
-        "timezone": "UTC",
-    }
-
-    weather_params = {
-        **common_params,
-        "hourly": WEATHER_VARIABLES,
-    }
-
-    air_quality_params = {
-        **common_params,
-        "hourly": AIR_QUALITY_VARIABLES,
-    }
-
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        weather_response, air_quality_response = await asyncio.gather(
-            client.get(WEATHER_URL, params=weather_params),
-            client.get(AIR_QUALITY_URL, params=air_quality_params),
-        )
-
-    weather_response.raise_for_status()
-    air_quality_response.raise_for_status()
-
-    weather_payload = weather_response.json()
-    air_quality_payload = air_quality_response.json()
-
-    weather_df = pd.DataFrame(weather_payload["hourly"])
-    air_quality_df = pd.DataFrame(air_quality_payload["hourly"])
-
-    weather_df["time"] = pd.to_datetime(
-        weather_df["time"], utc=True
+    """Backward-compatible alias for the fetch_recent_data function."""
+    return await fetch_recent_data(
+        latitude=latitude,
+        longitude=longitude,
+        timeout=timeout,
+        past_days=5,
     )
-    air_quality_df["time"] = pd.to_datetime(
-        air_quality_df["time"], utc=True
-    )
-
-    result = weather_df.merge(
-        air_quality_df,
-        on="time",
-        how="inner",
-    )
-
-    return result.sort_values("time").reset_index(drop=True)

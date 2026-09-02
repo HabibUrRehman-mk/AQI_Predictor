@@ -16,31 +16,35 @@
                     Machine-learning forecasts for the next 72 hours.
                 </p>
             </div>
-            <div class="status" id="status">Ready</div>
+            <div class="status" id="status" style="display: none;">Ready</div>
         </header>
 
         <section class="search-card">
             <div class="field">
                 <label for="city">City</label>
-                <input id="city" value="Faisalabad">
+                <input id="city" value="Faisalabad" readonly>
             </div>
+
             <div class="field">
                 <label for="latitude">Latitude</label>
-                <input id="latitude" type="number" step="any" value="31.4187">
+                <input id="latitude" type="number" step="any" value="31.4187" readonly>
             </div>
             <div class="field">
                 <label for="longitude">Longitude</label>
-                <input id="longitude" type="number" step="any" value="73.0791">
+                <input id="longitude" type="number" step="any" value="73.0791" readonly>
             </div>
             <button id="predict-button">Get forecast</button>
+            <button id="refresh-models" class="secondary">Refresh models</button>
         </section>
+
+        <!-- <p class="model-state" id="model-state">Model cache status: pending</p> -->
 
         <section class="location">
             <div>
                 <span class="muted">Location</span>
                 <h2 id="location-name">Faisalabad</h2>
             </div>
-            <p id="updated-at">Not updated yet</p>
+            <!-- <p id="updated-at">Not updated yet</p> -->
         </section>
 
         <section class="metrics">
@@ -79,7 +83,7 @@
             </div>
         </section>
 
-        <p class="error" id="error"></p>
+        <p class="error" id="error" style="display: none;"></p>
     </main>
 
     <script src="app.js"></script>
