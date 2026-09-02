@@ -60,7 +60,7 @@ async def download_models(request: Request) -> dict[str, object]:
 
 
 @router.get(
-    "/api/predict",
+    "/predict",
     response_model=PredictionResponse,
 )
 async def predict(

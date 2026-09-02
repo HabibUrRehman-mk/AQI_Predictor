@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8000";
+const API_URL = "/api";
 const button = document.querySelector("#predict-button");
 const refreshButton = document.querySelector("#refresh-models");
 const status = document.querySelector("#status");
@@ -45,7 +45,7 @@ async function loadPrediction() {
     const query = new URLSearchParams({ city, latitude, longitude });
 
     try {
-        const response = await fetch(`${API_URL}/api/predict?${query.toString()}`);
+        const response = await fetch(`${API_URL}/predict?${query.toString()}`);
         const data = await response.json();
 
         if (!response.ok) {
