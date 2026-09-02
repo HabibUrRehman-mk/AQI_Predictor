@@ -1,115 +1,55 @@
 import numpy as np
 import pandas as pd
+from app.core.config import settings
+
+BURNING_SEASON_MONTHS = {10, 11}
+
+FINAL_FEATURES = settings.FINAL_FEATURES
 
 
-REQUIRED_FEATURES = [
-    "us_aqi",
-    "us_aqi_lag_1h",
-    "pm25_pm10_ratio",
-    "pm2_5",
-    "pm2_5_lag_1h",
-    "pm2_5_roll_mean_6h",
-    "pm2_5_roll_mean_24h",
-    "pm2_5_roll_std_24h",
-    "pm10",
-    "us_aqi_lag_24h",
-    "us_aqi_lag_48h",
-    "us_aqi_lag_72h",
-    "us_aqi_roll_mean_24h",
-    "us_aqi_roll_min_24h",
-    "us_aqi_roll_max_24h",
-    "us_aqi_roll_std_24h",
-    "temperature_2m",
-    "relative_humidity_2m",
-    "surface_pressure",
-    "wind_speed_10m",
-    "wind_u",
-    "wind_v",
-    "is_burning_season",
-    "cos_month",
-    "sin_month",
-    "cos_hour",
-    "sin_hour",
-    "is_weekend",
-]
+def engineer_features_for_inference(df: pd.DataFrame) -> pd.DataFrame:
+    """Computes the exact feature set used during training and inference."""
+    df = df.sort_values("time").reset_index(drop=True).copy()
 
+    wind_rad = np.radians(df["wind_direction_10m"])
+    df["wind_u"] = -df["wind_speed_10m"] * np.sin(wind_rad)
+    df["wind_v"] = -df["wind_speed_10m"] * np.cos(wind_rad)
 
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    result = df.copy()
-    result["time"] = pd.to_datetime(result["time"], utc=True)
-    result = (
-        result.sort_values("time")
-        .drop_duplicates("time")
-        .reset_index(drop=True)
-    )
+    df["hour"] = df["time"].dt.hour.astype("int64")
+    df["dayofweek"] = df["time"].dt.dayofweek.astype("int64")
+    df["month"] = df["time"].dt.month.astype("int64")
+    df["is_weekend"] = (df["dayofweek"] >= 5).astype("int64")
+    df["is_burning_season"] = df["month"].isin(BURNING_SEASON_MONTHS).astype("int64")
 
-    wind_radians = np.radians(result["wind_direction_10m"])
-    result["wind_u"] = (
-        -result["wind_speed_10m"] * np.sin(wind_radians)
-    )
-    result["wind_v"] = (
-        -result["wind_speed_10m"] * np.cos(wind_radians)
-    )
+    df["sin_hour"] = np.sin(2 * np.pi * df["hour"] / 24.0)
+    df["cos_hour"] = np.cos(2 * np.pi * df["hour"] / 24.0)
+    df["sin_month"] = np.sin(2 * np.pi * df["month"] / 12.0)
+    df["cos_month"] = np.cos(2 * np.pi * df["month"] / 12.0)
 
-    result["hour"] = result["time"].dt.hour
-    result["dayofweek"] = result["time"].dt.dayofweek
-    result["month"] = result["time"].dt.month
+    df["pm2_5_lag_1h"] = df["pm2_5"].shift(1)
+    df["us_aqi_lag_1h"] = df["us_aqi"].shift(1)
+    df["us_aqi_lag_24h"] = df["us_aqi"].shift(24)
+    df["us_aqi_lag_48h"] = df["us_aqi"].shift(48)
+    df["us_aqi_lag_72h"] = df["us_aqi"].shift(72)
 
-    result["sin_hour"] = np.sin(2 * np.pi * result["hour"] / 24)
-    result["cos_hour"] = np.cos(2 * np.pi * result["hour"] / 24)
-    result["sin_month"] = np.sin(2 * np.pi * result["month"] / 12)
-    result["cos_month"] = np.cos(2 * np.pi * result["month"] / 12)
-    result["is_weekend"] = (result["dayofweek"] >= 5).astype(int)
+    df["pm2_5_roll_mean_6h"] = df["pm2_5"].shift(1).rolling(6).mean()
+    df["pm2_5_roll_mean_24h"] = df["pm2_5"].shift(1).rolling(24).mean()
+    df["pm2_5_roll_std_24h"] = df["pm2_5"].shift(1).rolling(24).std()
 
-    result["is_burning_season"] = result["month"].isin([10, 11]).astype(int)
-    result["pm25_pm10_ratio"] = (
-        result["pm2_5"] / (result["pm10"] + 1e-5)
-    )
+    df["us_aqi_roll_mean_24h"] = df["us_aqi"].shift(1).rolling(24).mean()
+    df["us_aqi_roll_std_24h"] = df["us_aqi"].shift(1).rolling(24).std()
+    df["us_aqi_roll_min_24h"] = df["us_aqi"].shift(1).rolling(24).min()
+    df["us_aqi_roll_max_24h"] = df["us_aqi"].shift(1).rolling(24).max()
 
-    result["pm2_5_lag_1h"] = result["pm2_5"].shift(1)
-    result["pm2_5_lag_24h"] = result["pm2_5"].shift(24)
+    df["pm25_pm10_ratio"] = df["pm2_5"] / (df["pm10"] + 1e-5)
 
-    for hours in [1, 24, 48, 72]:
-        result[f"us_aqi_lag_{hours}h"] = result["us_aqi"].shift(hours)
-
-    pm25_previous = result["pm2_5"].shift(1)
-    aqi_previous = result["us_aqi"].shift(1)
-
-    result["pm2_5_roll_mean_6h"] = (
-        pm25_previous.rolling(6).mean()
-    )
-    result["pm2_5_roll_mean_24h"] = (
-        pm25_previous.rolling(24).mean()
-    )
-    result["pm2_5_roll_std_24h"] = (
-        pm25_previous.rolling(24).std()
-    )
-
-    result["us_aqi_roll_mean_24h"] = (
-        aqi_previous.rolling(24).mean()
-    )
-    result["us_aqi_roll_min_24h"] = (
-        aqi_previous.rolling(24).min()
-    )
-    result["us_aqi_roll_max_24h"] = (
-        aqi_previous.rolling(24).max()
-    )
-    result["us_aqi_roll_std_24h"] = (
-        aqi_previous.rolling(24).std()
-    )
-
-    result = result.dropna().reset_index(drop=True)
-
-    if result.empty:
-        raise ValueError("Insufficient API data to create model features")
-
-    missing = [
-        feature
-        for feature in REQUIRED_FEATURES
-        if feature not in result.columns
-    ]
-
+    required_columns = FINAL_FEATURES + ["time"]
+    missing = [column for column in required_columns if column not in df.columns]
     if missing:
-        raise ValueError(f"Missing required features: {missing}")
+        raise ValueError(f"Missing required columns for inference: {missing}")
 
-    return result
+    df = df.dropna(subset=FINAL_FEATURES).reset_index(drop=True)
+    if df.empty:
+        raise ValueError("Insufficient data to create model features.")
+
+    return df
