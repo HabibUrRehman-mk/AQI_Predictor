@@ -3,6 +3,10 @@ from pydantic import SecretStr
 
 
 class Settings(BaseSettings):
+
+    allowed_origins: str 
+
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -14,7 +18,6 @@ class Settings(BaseSettings):
     model_dir: str = "/tmp/aqi_model_cache"
     request_timeout: float = 30.0
     requests_per_minute: int = 30
-    allowed_origins: str = "http://localhost:8080,http://127.0.0.1:8080"
 
 
     AQ_URL: str = "https://air-quality-api.open-meteo.com/v1/air-quality"
