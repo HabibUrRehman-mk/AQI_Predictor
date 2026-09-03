@@ -1,7 +1,7 @@
 # AQI Predictor – End-to-End Machine Learning Platform
 
 <p align="center">
-  <img src="./diagrams/architecture_diagram.png" alt="AQI Predictor Architecture" width="100%">
+  <img src="./diagrams/Architecture_Diagram.png" alt="AQI Predictor Architecture" width="100%">
 </p>
 
 <p align="center">
