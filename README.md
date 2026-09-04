@@ -3,7 +3,7 @@
 A multi-horizon (**24h / 48h / 72h**) Air Quality Index forecasting system for Faisalabad, Pakistan — built on an hourly Hopsworks feature pipeline, tracked end-to-end in MLflow, and served through a FastAPI + React application behind Nginx.
 
 <p align="center">
-  <img src="./assets/Architecture_Diagram.png" alt="AQI Predictor Architecture" width="100%">
+  <img src="./diagrams/Architecture_Diagram.png" alt="AQI Predictor Architecture" width="100%">
 </p>
 
 ---
@@ -104,13 +104,13 @@ A snapshot is saved to Parquet at data-collection time so results stay comparabl
 ## Exploratory Data Analysis
 
 <p align="center">
-  <img src="./assets/aqi_over_time.png" alt="US AQI over time - Faisalabad" width="100%">
+  <img src="./diagrams/aqi_over_time.png" alt="US AQI over time - Faisalabad" width="100%">
 </p>
 
 AQI in Faisalabad spikes sharply in winter (Nov–Jan), consistent with the city's textile-industry emissions combined with seasonal crop-burning.
 
 <p align="center">
-  <img src="./assets/aqi_by_month.png" alt="AQI by month" width="80%">
+  <img src="./diagrams/aqi_by_month.png" alt="AQI by month" width="80%">
 </p>
 
 The by-month boxplot confirms the seasonal pattern: median AQI is highest and most volatile in January, November, and December, with May–July showing a secondary spread driven by outlier pollution events, and the calmest air quality in March–April and August–September.
@@ -133,7 +133,7 @@ The by-month boxplot confirms the seasonal pattern: median AQI is highest and mo
 **Feature selection:** candidate features were ranked per target horizon by Spearman rank correlation (computed on training rows only, to avoid leakage). The full correlation structure across 43 engineered features is below:
 
 <p align="center">
-  <img src="./assets/full_feature_correlation_matrix.png" alt="Complete Spearman Rank Correlation Matrix" width="100%">
+  <img src="./diagrams/full_feature_correlation_matrix.png" alt="Complete Spearman Rank Correlation Matrix" width="100%">
 </p>
 
 From this ranking, a final set of **28 features** was selected for modeling — combining the strongest AQI/PM2.5 lag and rolling signals with weather and seasonal context, while dropping redundant highly-collinear columns (e.g. `pm10` correlates 0.87 with `pm2_5`; `dayofyear` correlates 1.00 with `dayofweek`'s seasonal proxy, `cos_month`).
@@ -196,7 +196,7 @@ Run on the training period only, using `TimeSeriesSplit` with a 72-row gap betwe
 *(XGBoost was only cross-validated at the 24h horizon in this notebook; CatBoost was the one carried through CV at 48h and 72h, which is why it — not XGBoost — is the registered champion at every horizon, for consistency.)*
 
 <p align="center">
-  <img src="./assets/ml_flow_experimentation.png" alt="MLflow training run comparison" width="100%">
+  <img src="./diagrams/ml_flow_experimentation.png" alt="MLflow training run comparison" width="100%">
 </p>
 
 **Reading the two evaluation numbers together, honestly:** the CV mean MAE (≈23 at 24h, ≈31–35 at 48h/72h) is higher than the single-split test MAE (≈14 at 24h, ≈20 at 48h/72h) precisely because of the variance mismatch noted above — the final test window was an unusually calm few months. The CV numbers are the fairer estimate of what to expect in a typical (including high-pollution winter) period, and R² dropping from ~0.5 at 24h to ~0.19 at 48h and ~0.04 at 72h is the honest picture: the model is clearly useful one day out, only modestly useful two days out, and barely better than a coin-flip-level baseline three days out. That degradation with horizon is expected and is called out directly rather than hidden.
