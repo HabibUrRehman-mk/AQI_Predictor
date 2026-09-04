@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 from time import monotonic
 
@@ -49,14 +50,14 @@ async def download_models(request: Request) -> dict[str, object]:
         raise HTTPException(status_code=500, detail="Predictor service is not configured.")
 
     try:
-        loaded_models = predictor.reload_models()
+        loaded_models = await asyncio.to_thread(predictor.reload_models)
         return {
             "status": "success",
             "message": "Models downloaded from Hopsworks and loaded into RAM.",
             "models": list(loaded_models.keys()),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to refresh model cache: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"Failed to download and load models: {exc}") from exc
 
 
 @router.get(
@@ -93,7 +94,19 @@ async def predict(
             "surface_pressure": to_float(latest_api_row["surface_pressure"]),
             "wind_speed_10m": to_float(latest_api_row["wind_speed_10m"]),
             "wind_direction_10m": to_float(latest_api_row["wind_direction_10m"]),
+            "pm2_5": to_float(latest_api_row["pm2_5"]),
+            "pm10": to_float(latest_api_row["pm10"]),
+            "nitrogen_dioxide": to_float(latest_api_row["nitrogen_dioxide"]),
+            "ozone": to_float(latest_api_row["ozone"]),
         }
+
+        history = [
+            {
+                "time": row["time"].isoformat(),
+                "aqi": to_float(row["us_aqi"]),
+            }
+            for _, row in raw_df.tail(73).iterrows()
+        ]
 
         return PredictionResponse(
             city=str(city),
@@ -102,6 +115,7 @@ async def predict(
             timestamp=latest_api_row["time"].to_pydatetime(),
             current_aqi=to_float(latest_api_row["us_aqi"]),
             weather=weather,
+            history=history,
             predicted_aqi_24h=float(predictions[0]),
             predicted_aqi_48h=float(predictions[1]),
             predicted_aqi_72h=float(predictions[2]),

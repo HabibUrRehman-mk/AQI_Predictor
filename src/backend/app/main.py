@@ -29,4 +29,4 @@ async def startup_event() -> None:
         app.state.predictor.reload_models()
         app.state.startup_error = None
     except Exception:
-        app.state.startup_error = "Model registry cache is not available yet. Use the admin endpoint to load models."
+        app.state.startup_error = "Model registry is not available yet. Use the admin endpoint to retry loading models."

@@ -160,14 +160,12 @@ class ModelRegistryService:
         return model_object
 
     def load_all_models(self) -> dict[str, Any]:
+        """Download the best registered version of every model into RAM."""
         loaded_models: dict[str, Any] = {}
 
         for model_name in self.model_names:
-            cache_path = self.model_dir / model_name / "model.pkl"
-            if cache_path.exists():
-                loaded_models[model_name] = self.load_from_cache(model_name)
-            else:
-                loaded_models[model_name] = self.download_model(model_name)
+            _, model_object, _ = self._download_model_version(model_name)
+            loaded_models[model_name] = model_object
 
         with self._lock:
             self._previous_models = self._active_models
@@ -177,15 +175,12 @@ class ModelRegistryService:
         return self._active_models
 
     def refresh_models(self) -> dict[str, Any]:
+        """Download the best registered version of every model and load it into RAM."""
         new_models: dict[str, Any] = {}
 
         for model_name in self.model_names:
-            cache_path = self.model_dir / model_name / "model.pkl"
-            if cache_path.exists():
-                new_models[model_name] = self.load_from_cache(model_name)
-            else:
-                _, model_object, _ = self._download_model_version(model_name)
-                new_models[model_name] = model_object
+            _, model_object, _ = self._download_model_version(model_name)
+            new_models[model_name] = model_object
 
         with self._lock:
             self._previous_models = self._active_models
@@ -197,6 +192,11 @@ class ModelRegistryService:
     def get_model(self, model_name: str) -> Any | None:
         with self._lock:
             return self._active_models.get(model_name)
+
+    def get_models_snapshot(self) -> dict[str, Any]:
+        """Return one stable active-model snapshot for a complete prediction."""
+        with self._lock:
+            return dict(self._active_models)
 
     def clear_cached_models(self) -> None:
         with self._lock:

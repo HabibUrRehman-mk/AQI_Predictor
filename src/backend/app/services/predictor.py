@@ -57,9 +57,10 @@ class Predictor:
 
         model_input = feature_df[self.feature_names].astype(float)
         predictions: list[float] = []
+        active_models = self.registry.get_models_snapshot()
 
         for model_name in self.model_names:
-            model = self.registry.get_model(model_name)
+            model = active_models.get(model_name)
             if model is None:
                 raise RuntimeError(f"Model '{model_name}' is not loaded in memory.")
             pred_value = float(np.asarray(model.predict(model_input)).reshape(-1)[0])

@@ -3,89 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AQI Horizon</title>
+    <title>AQI Horizon | Faisalabad air quality</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <main class="container">
-        <header class="header">
-            <div>
-                <p class="eyebrow">AIR QUALITY INTELLIGENCE</p>
-                <h1>AQI Horizon</h1>
-                <p class="subtitle">
-                    Machine-learning forecasts for the next 72 hours.
-                </p>
-            </div>
-            <div class="status" id="status" style="display: none;">Ready</div>
+    <div class="app-shell">
+        <header class="site-header">
+            <a class="brand" href="#dashboard" aria-label="AQI Horizon dashboard">
+                <span class="brand-mark">AQ</span>
+                <span><strong>AQI Horizon</strong><small>Faisalabad air desk</small></span>
+            </a>
+            <nav class="main-nav" aria-label="Primary navigation">
+                <a href="#dashboard" data-page-link="dashboard">Dashboard</a>
+                <a href="#metrics" data-page-link="metrics">Metrics &amp; findings</a>
+                <a href="#architecture" data-page-link="architecture">Architecture</a>
+            </nav>
+            <a class="fork-button" href="https://github.com/HabibUrRehman-mk" target="_blank" rel="noreferrer">
+                <span>Fork</span><span aria-hidden="true">↗</span>
+            </a>
         </header>
 
-        <section class="search-card">
-            <div class="field">
-                <label for="city">City</label>
-                <input id="city" value="Faisalabad" readonly>
-            </div>
 
-            <div class="field">
-                <label for="latitude">Latitude</label>
-                <input id="latitude" type="number" step="any" value="31.4187" readonly>
-            </div>
-            <div class="field">
-                <label for="longitude">Longitude</label>
-                <input id="longitude" type="number" step="any" value="73.0791" readonly>
-            </div>
-            <button id="predict-button">Get forecast</button>
-            <button id="refresh-models" class="secondary">Refresh models</button>
-        </section>
+        <main id="dashboard-page" class="page" data-page="dashboard">
+            <section class="hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow">LIVE AIR QUALITY / CAMS MODEL</p>
+                    <h1>Read the air<br><em>before it arrives.</em></h1>
+                    <p class="hero-description">A clear, local view of Faisalabad's air today, with a machine-learning horizon reaching three days ahead.</p>
+                    <div class="live-line"><span class="live-dot"></span><span id="status">Connecting to live data</span><span class="updated" id="updated-at">—</span></div>
+                </div>
+                <div class="hero-note"><span>Forecast window</span><strong>72</strong><small>hours ahead</small><div class="note-rule"></div><span>Updated hourly from Open-Meteo</span></div>
+            </section>
 
-        <!-- <p class="model-state" id="model-state">Model cache status: pending</p> -->
+            <section class="control-strip" aria-label="Forecast controls">
+                <div class="location-control"><span class="pin">+</span><div><label for="city">Location</label><input id="city" value="Faisalabad" readonly></div></div>
+                <input id="latitude" type="hidden" value="31.4187">
+                <input id="longitude" type="hidden" value="73.0791">
+                <button id="predict-button" class="primary-button">Refresh forecast <span aria-hidden="true">↗</span></button>
+                <button id="refresh-models" class="text-button">Refresh models</button>
+            </section>
 
-        <section class="location">
-            <div>
-                <span class="muted">Location</span>
-                <h2 id="location-name">Faisalabad</h2>
-            </div>
-            <!-- <p id="updated-at">Not updated yet</p> -->
-        </section>
+            <section class="current-section">
+                <div class="section-label"><span>01</span><h2>Right now</h2><span class="section-rule"></span><span id="location-name">Faisalabad</span></div>
+                <div class="current-grid">
+                    <article class="aqi-hero-card" id="current-card">
+                        <div><span class="card-kicker">CURRENT AQI</span><strong id="current-aqi">—</strong><span class="category-pill" id="current-category">Waiting for reading</span></div>
+                        <div class="aqi-dial" aria-hidden="true"><span id="current-dial-value">—</span><small>/ 500</small></div>
+                    </article>
+                    <div class="conditions-grid">
+                        <article class="condition-card"><span class="condition-icon">°</span><div><small>Temperature</small><strong id="temperature">—</strong></div></article>
+                        <article class="condition-card"><span class="condition-icon">◌</span><div><small>Humidity</small><strong id="humidity">—</strong></div></article>
+                        <article class="condition-card"><span class="condition-icon">↗</span><div><small>Wind speed</small><strong id="wind">—</strong></div></article>
+                        <article class="condition-card"><span class="condition-icon">≋</span><div><small>Pressure</small><strong id="pressure">—</strong></div></article>
+                    </div>
+                </div>
+            </section>
 
-        <section class="metrics">
-            <article class="metric current">
-                <span>Current AQI</span>
-                <strong id="current-aqi">—</strong>
-                <small>Open-Meteo observation</small>
-            </article>
-            <article class="metric">
-                <span>Forecast · 24h</span>
-                <strong id="aqi-24">—</strong>
-                <small>Predicted AQI</small>
-            </article>
-            <article class="metric">
-                <span>Forecast · 48h</span>
-                <strong id="aqi-48">—</strong>
-                <small>Predicted AQI</small>
-            </article>
-            <article class="metric">
-                <span>Forecast · 72h</span>
-                <strong id="aqi-72">—</strong>
-                <small>Predicted AQI</small>
-            </article>
-        </section>
+            <section class="forecast-section">
+                <div class="section-label"><span>03</span><h2>Three-day outlook</h2><span class="section-rule"></span><span>Model forecast</span></div>
+                <div class="forecast-grid">
+                    <article class="forecast-card" data-horizon="24"><span>+24 hours</span><strong id="aqi-24">—</strong><b id="category-24">—</b></article>
+                    <article class="forecast-card" data-horizon="48"><span>+48 hours</span><strong id="aqi-48">—</strong><b id="category-48">—</b></article>
+                    <article class="forecast-card" data-horizon="72"><span>+72 hours</span><strong id="aqi-72">—</strong><b id="category-72">—</b></article>
+                </div>
+            </section>
 
-        <section class="weather-card">
-            <div class="section-heading">
-                <h2>Current conditions</h2>
-                <span>Live API data</span>
-            </div>
-            <div class="weather-grid">
-                <div><span>Temperature</span><strong id="temperature">—</strong></div>
-                <div><span>Humidity</span><strong id="humidity">—</strong></div>
-                <div><span>Pressure</span><strong id="pressure">—</strong></div>
-                <div><span>Wind</span><strong id="wind">—</strong></div>
-            </div>
-        </section>
+            <section class="pollutants-section">
+                <div class="section-label"><span>02</span><h2>What is in the air</h2><span class="section-rule"></span><span>μg/m³ unless noted</span></div>
+                <div class="pollutant-grid">
+                    <article class="pollutant-card"><span class="pollutant-symbol pm">PM</span><div><small>Particulate matter</small><strong id="pm25">—</strong><span>PM2.5</span></div></article>
+                    <article class="pollutant-card"><span class="pollutant-symbol pm">PM</span><div><small>Coarse particles</small><strong id="pm10">—</strong><span>PM10</span></div></article>
+                    <article class="pollutant-card"><span class="pollutant-symbol no">NO₂</span><div><small>Nitrogen dioxide</small><strong id="no2">—</strong><span>NO₂</span></div></article>
+                    <article class="pollutant-card"><span class="pollutant-symbol o3">O₃</span><div><small>Ground-level ozone</small><strong id="ozone">—</strong><span>O₃</span></div></article>
+                </div>
+            </section>
 
-        <p class="error" id="error" style="display: none;"></p>
-    </main>
+            <section class="chart-section">
+                <div class="chart-heading"><div><div class="section-label compact"><span>04</span><h2>Past to forecast</h2></div><p>Hourly observations flowing into the next three model horizons.</p></div><div class="chart-legend"><span><i class="legend-observed"></i>Observed</span><span><i class="legend-forecast"></i>Forecast</span></div></div>
+                <div class="chart-wrap"><div class="range-labels"><span>Hazardous</span><span>Very unhealthy</span><span>Unhealthy</span><span>Moderate</span><span>Good</span></div><svg id="aqi-chart" viewBox="0 0 900 330" role="img" aria-label="AQI observations and forecast chart"></svg></div>
+            </section>
+            <p class="error" id="error" role="alert"></p>
+        </main>
 
+        <main id="metrics-page" class="page static-page" data-page="metrics" hidden>
+            <section class="page-intro"><p class="eyebrow">MODEL NOTES / EVIDENCE</p><h1>Metrics &amp;<br><em>findings.</em></h1><p>What the data says about Faisalabad's air and the limits of a long-horizon forecast.</p></section>
+            <section class="story-grid"><div class="story-copy"><span class="story-number">01</span><h2>The season has a signature.</h2><p>The monthly distribution shows the highest median AQI and widest spread in November, December, and January. Winter pollution is not a single spike: it is a recurring seasonal regime consistent with industrial emissions and crop-burning conditions.</p></div><figure><img src="/assets/aqi_by_month.png" alt="Box plots of AQI by month"><figcaption>AQI distribution by month</figcaption></figure></section>
+            <section class="story-grid reversed"><div class="story-copy"><span class="story-number">02</span><h2>The air is volatile by nature.</h2><p>The long series makes the operational challenge visible: quiet periods can shift into sharp pollution episodes. This is why a chronological split and rolling cross-validation matter more than a convenient random split.</p></div><figure><img src="/assets/aqi_over_time.png" alt="AQI over time in Faisalabad"><figcaption>US AQI over the observed period</figcaption></figure></section>
+            <section class="evidence-section"><div class="section-label"><span>03</span><h2>Performance, honestly read</h2><span class="section-rule"></span></div><div class="metrics-table"><div class="table-head"><span>Horizon</span><span>CV mean MAE</span><span>CV mean R²</span><span>Read</span></div><div><strong>24h</strong><span>23.30</span><span class="positive">0.514</span><span>Useful one day out</span></div><div><strong>48h</strong><span>31.50</span><span>0.187</span><span>Modest signal</span></div><div><strong>72h</strong><span>35.11</span><span>0.039</span><span>Near the edge of predictability</span></div></div><p class="footnote">CV mean is the metric of record. The held-out summer test window was unusually calm, so its more flattering R² should not be treated as the general expectation.</p></section>
+            <section class="story-grid shap-story"><div class="story-copy"><span class="story-number">04</span><h2>Recent history leads the model.</h2><p>Recent history and environment lead the model. SHAP shows that seasonality, surface pressure, current AQI, PM10, and wind speed carry the strongest influence, with additional contributions from AQI lags and rolling averages. The model is learning persistence plus weather context, not inventing a hidden cause.</p></div><figure class="asset-frame"><img src="/assets/shap_beeswarm_24h.png" alt="SHAP beeswarm feature importance for the 24 hour model" onerror="this.closest('figure').classList.add('missing-asset')"><figcaption>SHAP summary, AQI +24h</figcaption></figure></section>
+            <section class="story-grid reversed"><div class="story-copy"><span class="story-number">05</span><h2>Experiment Tracking</h2><p>ML Flow used for experiment Tracking</p></div><figure><img src="/assets/ml_flow_experimentation.png" alt="AQI over time in Faisalabad"><figcaption></figcaption></figure></section>
+            <section class="story-grid shap-story"><div class="story-copy"><span class="story-number">06</span><h2>Feature correlation</h2><p></p></div><figure class="asset-frame"><img src="/assets/full_feature_correlation_matrix.png" onerror="this.closest('figure').classList.add('missing-asset')"><figcaption>Full feature correlation matrix</figcaption></figure></section>
+            <section class="evidence-images"><figure><img src="/assets/full_feature_correlation_matrix.png" alt="Full feature correlation matrix"><figcaption>Full feature correlation matrix</figcaption></figure>
+        </main>
+
+        <main id="architecture-page" class="page static-page" data-page="architecture" hidden>
+            <section class="page-intro"><p class="eyebrow">SYSTEM MAP / FROM DATA TO DECISION</p><h1>One hourly loop,<br><em>three horizons.</em></h1><p>The production system turns modeled atmospheric data into a forecast that can be read in a browser, without changing the model-serving path.</p></section>
+            <section class="architecture-hero"><figure><img src="/assets/architecture_diagram.png" alt="AQI Predictor end-to-end MLOps architecture"><figcaption>End-to-end MLOps architecture</figcaption></figure><div class="architecture-copy"><span class="story-number">01</span><h2>From Open-Meteo to the browser.</h2><p>Hourly data ingestion transforms weather and air-quality observations into the Hopsworks feature store. The FastAPI service reads the latest features, loads the registered CatBoost models, and exposes the three horizon predictions through the existing API.</p><p>Nginx serves this interface and routes prediction requests to the backend. The frontend keeps the operational view simple: current conditions, pollutants, historical context, and a forecast that can be understood at a glance.</p></div></section>
+            <section class="workflow-grid"><article><span>02</span><h2>Hourly ingestion</h2><p>GitHub Actions runs the ingestion and feature-store update every hour. There is no always-on training server in this loop.</p></article><article><span>03</span><h2>Daily retraining</h2><p>The model retraining workflow runs once a day, evaluates candidates with MLflow, and registers the selected horizon models in Hopsworks.</p></article><article><span>04</span><h2>Production serving</h2><p>A DigitalOcean VPS runs FastAPI behind Nginx. The application retrieves predictions on demand while the model cache stays warm in the backend.</p></article></section>
+            <section class="actions-image"><div><div class="section-label compact"><span>05</span><h2>Automation is part of the product</h2></div><p>GitHub Actions keeps the data and model lifecycle moving on a predictable schedule. The deployed application remains focused on serving and explaining the latest result.</p></div><figure class="asset-frame"><img src="/assets/github_actions.png" alt="GitHub Actions workflow" onerror="this.closest('figure').classList.add('missing-asset')"><figcaption>Scheduled automation workflow</figcaption></figure></section>
+        </main>
+
+        <footer class="site-footer"><div><strong>AQI Horizon</strong><span>Built for clearer decisions about Faisalabad's air.</span></div><div class="footer-details"><span>Project by Faisalabad AQI Predictor</span><a href="https://github.com/HabibUrRehman-mk" target="_blank" rel="noreferrer">GitHub ↗</a><span>© 2026</span></div></footer>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>
