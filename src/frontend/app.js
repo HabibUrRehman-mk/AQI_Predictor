@@ -3,6 +3,8 @@ const button = document.querySelector("#predict-button");
 const refreshButton = document.querySelector("#refresh-models");
 const status = document.querySelector("#status");
 const errorBox = document.querySelector("#error");
+const menuToggle = document.querySelector("#menu-toggle");
+const mainNav = document.querySelector(".main-nav");
 
 const AQI_RANGES = [
     { max: 50, label: "Good", color: "#58b978" },
@@ -156,11 +158,26 @@ function showPage() {
     const page = ["metrics", "architecture"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard";
     document.querySelectorAll(".page").forEach((element) => { element.hidden = element.dataset.page !== page; });
     document.querySelectorAll("[data-page-link]").forEach((link) => link.classList.toggle("active", link.dataset.pageLink === page));
+    closeMenu();
     window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function closeMenu() {
+    if (!menuToggle || !mainNav) return;
+    menuToggle.setAttribute("aria-expanded", "false");
+    mainNav.classList.remove("is-open");
 }
 
 button.addEventListener("click", loadPrediction);
 refreshButton.addEventListener("click", () => refreshModels().catch((error) => { errorBox.textContent = error.message; }));
+menuToggle.addEventListener("click", () => {
+    const isOpen = menuToggle.getAttribute("aria-expanded") === "true";
+    menuToggle.setAttribute("aria-expanded", String(!isOpen));
+    mainNav.classList.toggle("is-open", !isOpen);
+});
+document.addEventListener("click", (event) => {
+    if (!event.target.closest(".site-header")) closeMenu();
+});
 window.addEventListener("hashchange", showPage);
 showPage();
 loadPrediction();
