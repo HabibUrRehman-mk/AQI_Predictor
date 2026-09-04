@@ -249,39 +249,7 @@ Each model is registered with its own input/output schema and description (e.g. 
 ---
 
 ## Local Setup
-
-```bash
-# 1. Clone the repo
-git clone <your-repo-url>
-cd <your-repo>
-
-# 2. Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate        # macOS/Linux
-# .venv\Scripts\Activate.ps1     # Windows PowerShell
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure environment variables (see below)
-cp .env.example .env
-
-# 5. Run the pipeline notebook (data pull -> cleaning -> EDA -> training -> registry push)
-jupyter notebook Full_ML_Pipeline.ipynb
-
-# 6. Browse experiment runs
-mlflow ui
-
-# 7. Run the API
-uvicorn main:app --reload --port 8000
-
-# 8. Run the frontend (in a second terminal)
-cd frontend && npm install && npm start
-```
-
-> Adjust script/folder names above to match your actual repo layout — fill in once your backend/frontend directories are finalized.
-
----
+Coming
 
 ## Environment Variables
 
