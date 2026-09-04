@@ -11,6 +11,7 @@ class PredictionResponse(BaseModel):
     timestamp: datetime
     current_aqi: float = Field(ge=0)
     weather: dict[str, Any]
+    history: list[dict[str, Any]] = Field(default_factory=list)
     predicted_aqi_24h: float = Field(ge=0)
     predicted_aqi_48h: float = Field(ge=0)
     predicted_aqi_72h: float = Field(ge=0)
