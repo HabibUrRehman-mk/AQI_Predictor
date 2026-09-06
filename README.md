@@ -260,6 +260,7 @@ cd src
 docker compose up --build
 
 3. Application will be running at (http://localhost:8080/)[http://localhost:8080/]
+---
 
 ## Environment Variables
 
