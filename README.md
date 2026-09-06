@@ -259,7 +259,7 @@ Each model is registered with its own input/output schema and description (e.g. 
 cd src
 docker compose up --build
 
-3. Application will be running at (http://localhost:8080/)[http://localhost:8080/]
+3. Application will be running at [http://localhost:8080/](http://localhost:8080/)
 ---
 
 ## Environment Variables
