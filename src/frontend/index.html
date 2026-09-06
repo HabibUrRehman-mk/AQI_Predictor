@@ -63,6 +63,29 @@
                 </div>
             </section>
 
+            <section class="aqi-gauge-section">
+                <div class="section-label"><span>02</span><h2>AQI range</h2><span class="section-rule"></span><span>Current and forecast pointers</span></div>
+                <div class="gauge-panel">
+                    <div class="gauge-visual">
+                        <svg id="aqi-gauge" viewBox="0 0 760 330" role="img" aria-label="AQI gauge showing current and forecast values"></svg>
+                        <div class="gauge-legend" aria-label="AQI health categories">
+                            <span><i class="range-good"></i>Good</span>
+                            <span><i class="range-moderate"></i>Moderate</span>
+                            <span><i class="range-sensitive"></i>Unhealthy for sensitive groups</span>
+                            <span><i class="range-unhealthy"></i>Unhealthy</span>
+                            <span><i class="range-very-unhealthy"></i>Very unhealthy</span>
+                            <span><i class="range-hazardous"></i>Hazardous</span>
+                        </div>
+                    </div>
+                    <div class="gauge-readings" aria-label="AQI gauge readings">
+                        <div class="gauge-reading current"><span class="reading-marker"></span><div><small>Current</small><strong id="gauge-current">—</strong></div></div>
+                        <div class="gauge-reading horizon-24"><span class="reading-marker"></span><div><small>+24 hours</small><strong id="gauge-24">—</strong></div></div>
+                        <div class="gauge-reading horizon-48"><span class="reading-marker"></span><div><small>+48 hours</small><strong id="gauge-48">—</strong></div></div>
+                        <div class="gauge-reading horizon-72"><span class="reading-marker"></span><div><small>+72 hours</small><strong id="gauge-72">—</strong></div></div>
+                    </div>
+                </div>
+            </section>
+
             <section class="forecast-section">
                 <div class="section-label"><span>03</span><h2>Three-day outlook</h2><span class="section-rule"></span><span>Model forecast</span></div>
                 <div class="forecast-grid">
@@ -73,7 +96,7 @@
             </section>
 
             <section class="pollutants-section">
-                <div class="section-label"><span>02</span><h2>What is in the air</h2><span class="section-rule"></span><span>μg/m³ unless noted</span></div>
+                <div class="section-label"><span>04</span><h2>What is in the air</h2><span class="section-rule"></span><span>μg/m³ unless noted</span></div>
                 <div class="pollutant-grid">
                     <article class="pollutant-card"><span class="pollutant-symbol pm">PM</span><div><small>Particulate matter</small><strong id="pm25">—</strong><span>PM2.5</span></div></article>
                     <article class="pollutant-card"><span class="pollutant-symbol pm">PM</span><div><small>Coarse particles</small><strong id="pm10">—</strong><span>PM10</span></div></article>
@@ -83,14 +106,14 @@
             </section>
 
             <section class="chart-section">
-                <div class="chart-heading"><div><div class="section-label compact"><span>04</span><h2>Past to forecast</h2></div><p>Hourly observations flowing into the next three model horizons.</p></div><div class="chart-legend"><span><i class="legend-observed"></i>Observed</span><span><i class="legend-forecast"></i>Forecast</span></div></div>
+                <div class="chart-heading"><div><div class="section-label compact"><span>05</span><h2>Past to forecast</h2></div><p>Hourly observations flowing into the next three model horizons.</p></div><div class="chart-legend"><span><i class="legend-observed"></i>Observed</span><span><i class="legend-forecast"></i>Forecast</span></div></div>
                 <div class="chart-wrap"><div class="range-labels"><span>Hazardous</span><span>Very unhealthy</span><span>Unhealthy</span><span>Moderate</span><span>Good</span></div><svg id="aqi-chart" viewBox="0 0 900 330" role="img" aria-label="AQI observations and forecast chart"></svg></div>
             </section>
             <p class="error" id="error" role="alert"></p>
         </main>
 
         <main id="metrics-page" class="page static-page" data-page="metrics" hidden>
-            <section class="page-intro"><p class="eyebrow">MODEL NOTES / EVIDENCE</p><h1>Metrics &amp;<br><em>findings.</em></h1><p>What the data says about Faisalabad's air and the limits of a long-horizon forecast.</p></section>
+            <section class="page-intro"><p class="eyebrow">MODEL NOTES / EVIDENCE</p><h1>Metrics &amp;<br><em>findings.</em></h1><p>What the data says about Faisalabad's air and the limits of a long-horizon forecast.</p><a class="report-button" href="https://github.com/HabibUrRehman-mk/AQI_Predictor/blob/main/Report.pdf" target="_blank" rel="noreferrer">Read the detailed report <span aria-hidden="true">↗</span></a></section>
             <section class="story-grid"><div class="story-copy"><span class="story-number">01</span><h2>The season has a signature.</h2><p>The monthly distribution shows the highest median AQI and widest spread in November, December, and January. Winter pollution is not a single spike: it is a recurring seasonal regime consistent with industrial emissions and crop-burning conditions.</p></div><figure><img src="/assets/aqi_by_month.png" alt="Box plots of AQI by month"><figcaption>AQI distribution by month</figcaption></figure></section>
             <section class="story-grid reversed"><div class="story-copy"><span class="story-number">02</span><h2>The air is volatile by nature.</h2><p>The long series makes the operational challenge visible: quiet periods can shift into sharp pollution episodes. This is why a chronological split and rolling cross-validation matter more than a convenient random split.</p></div><figure><img src="/assets/aqi_over_time.png" alt="AQI over time in Faisalabad"><figcaption>US AQI over the observed period</figcaption></figure></section>
             <section class="evidence-section"><div class="section-label"><span>03</span><h2>Performance, honestly read</h2><span class="section-rule"></span></div><div class="metrics-table"><div class="table-head"><span>Horizon</span><span>Model</span><span>MAE</span><span>R²</span><span>Baseline MAE</span><span>Baseline R²</span></div><div><strong>24h</strong><span>CatBoost (tuned)</span><span>14.04</span><span class="positive">0.385</span><span>17.31</span><span>−0.046</span></div><div><strong>48h</strong><span>CatBoost (tuned)</span><span>19.50</span><span>0.119</span><span>21.78</span><span>−0.656</span></div><div><strong>72h</strong><span>CatBoost (tuned)</span><span>19.88</span><span>0.144</span><span>21.83</span><span>−0.756</span></div></div><p class="footnote">CV mean is the metric of record. The held-out summer test window was unusually calm, so its more flattering R² should not be treated as the general expectation.</p></section>

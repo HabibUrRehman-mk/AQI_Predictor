@@ -43,6 +43,63 @@ function renderAqi(value, numberSelector, categorySelector, cardSelector) {
     applyAqiColor(document.querySelector(cardSelector), value);
 }
 
+const GAUGE_RANGES = [
+    { from: 0, to: 50, label: "Good", color: "#58b978" },
+    { from: 50, to: 100, label: "Moderate", color: "#e3bd46" },
+    { from: 100, to: 150, label: "Sensitive", color: "#ee9651" },
+    { from: 150, to: 200, label: "Unhealthy", color: "#e05f58" },
+    { from: 200, to: 300, label: "Very unhealthy", color: "#9d6bb5" },
+    { from: 300, to: 500, label: "Hazardous", color: "#8f4058" },
+];
+
+const GAUGE_POINTERS = [
+    { key: "current", label: "Current", color: "#20322f", valueSelector: "#gauge-current" },
+    { key: "24", label: "+24h", color: "#236e68", valueSelector: "#gauge-24" },
+    { key: "48", label: "+48h", color: "#d86d45", valueSelector: "#gauge-48" },
+    { key: "72", label: "+72h", color: "#8f4058", valueSelector: "#gauge-72" },
+];
+
+function gaugePoint(value, radius = 185) {
+    const angle = Math.PI - (Math.min(Math.max(Number(value) || 0, 0), 500) / 500) * Math.PI;
+    return [380 + radius * Math.cos(angle), 245 - radius * Math.sin(angle)];
+}
+
+function gaugeArc(from, to, radius = 185) {
+    const start = gaugePoint(from, radius);
+    const end = gaugePoint(to, radius);
+    const largeArc = to - from > 250 ? 1 : 0;
+    return `M ${start[0]} ${start[1]} A ${radius} ${radius} 0 ${largeArc} 1 ${end[0]} ${end[1]}`;
+}
+
+function renderGauge(values) {
+    const gauge = document.querySelector("#aqi-gauge");
+    if (!gauge) return;
+    gauge.replaceChildren();
+    GAUGE_RANGES.forEach((range) => {
+        gauge.appendChild(svgElement("path", { d: gaugeArc(range.from, range.to), fill: "none", stroke: range.color, "stroke-width": "42", "stroke-linecap": "butt" }));
+        const labelPoint = gaugePoint(range.from + (range.to - range.from) / 2, 142);
+        const label = svgElement("text", { x: labelPoint[0], y: labelPoint[1] + 4, "text-anchor": "middle", fill: "#fff", "font-size": "11", "font-weight": "700" });
+        label.textContent = range.label;
+        gauge.appendChild(label);
+    });
+    [0, 50, 100, 150, 200, 300, 500].forEach((mark) => {
+        const point = gaugePoint(mark, 213);
+        const label = svgElement("text", { x: point[0], y: point[1] + (mark === 0 || mark === 500 ? 6 : 0), "text-anchor": mark === 0 ? "start" : mark === 500 ? "end" : "middle", fill: "#718078", "font-size": "12" });
+        label.textContent = mark;
+        gauge.appendChild(label);
+    });
+    GAUGE_POINTERS.forEach((pointer) => {
+        const value = values[pointer.key];
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) return;
+        const tip = gaugePoint(numericValue, 185);
+        const base = [380, 245];
+        gauge.appendChild(svgElement("line", { x1: base[0], y1: base[1], x2: tip[0], y2: tip[1], stroke: pointer.color, "stroke-width": pointer.key === "current" ? "5" : "3", "stroke-linecap": "round" }));
+        gauge.appendChild(svgElement("circle", { cx: tip[0], cy: tip[1], r: pointer.key === "current" ? "7" : "5", fill: pointer.color, stroke: "#f4f7f1", "stroke-width": "3" }));
+        setText(pointer.valueSelector, Math.round(numericValue));
+    });
+}
+
 function svgElement(name, attributes = {}) {
     const element = document.createElementNS("http://www.w3.org/2000/svg", name);
     Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
@@ -144,6 +201,7 @@ async function loadPrediction() {
         setText("#no2", format(data.weather.nitrogen_dioxide));
         setText("#ozone", format(data.weather.ozone));
         setText("#updated-at", `Updated ${new Date(data.timestamp).toLocaleString()}`);
+        renderGauge({ current: data.current_aqi, 24: data.predicted_aqi_24h, 48: data.predicted_aqi_48h, 72: data.predicted_aqi_72h });
         renderChart(data.history || [], [data.predicted_aqi_24h, data.predicted_aqi_48h, data.predicted_aqi_72h], data.timestamp);
         status.textContent = "Live and connected";
     } catch (error) {
@@ -180,4 +238,5 @@ document.addEventListener("click", (event) => {
 });
 window.addEventListener("hashchange", showPage);
 showPage();
+renderGauge({});
 loadPrediction();
