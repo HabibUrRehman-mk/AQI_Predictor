@@ -249,7 +249,6 @@ Each model is registered with its own input/output schema and description (e.g. 
 - **Automation:** GitHub Actions drives the hourly data-ingestion loop into the Hopsworks Feature Store and the scheduled retraining, keeping the pipeline serverless — no dedicated always-on training machine.
 
 ---
-
 ## Local Setup
 
 1. Setup your `.env` values in the root directory.
@@ -257,9 +256,11 @@ Each model is registered with its own input/output schema and description (e.g. 
 
 ```bash
 cd src
-docker compose up --build```
+docker compose up --build
+```
 
 3. Application will be running at [http://localhost:8080/](http://localhost:8080/)
+
 ---
 
 ## Environment Variables
