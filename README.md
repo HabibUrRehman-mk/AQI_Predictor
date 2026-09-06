@@ -2,8 +2,8 @@
 
 A multi-horizon (**24h / 48h / 72h**) Air Quality Index forecasting system for Faisalabad, Pakistan — built on an hourly Hopsworks feature pipeline, tracked end-to-end in MLflow, and served through a FastAPI + React application behind Nginx.
 ---
-**Live at:** [aqi.habib.systems](https://aqi.habib.systems)
-**Project Explaination video:** [https://www.instagram.com/reel/Dc7-aZOIGfE/?utm_source=ig_web_copy_link&stkn=NTc4MTIwNjQ2YQ==](https://www.instagram.com/reel/Dc7-aZOIGfE/?utm_source=ig_web_copy_link&stkn=NTc4MTIwNjQ2YQ==)
+**Live at:** [aqi.habib.systems](https://aqi.habib.systems)<br>
+**Project Explanation Video:** [Watch on Instagram](https://www.instagram.com/reel/Dc7-aZOIGfE/?utm_source=ig_web_copy_link&stkn=NTc4MTIwNjQ2YQ==)
 ---
 <p align="center">
   <img src="./diagrams/Architecture_Diagram.png" alt="AQI Predictor Architecture" width="100%">
