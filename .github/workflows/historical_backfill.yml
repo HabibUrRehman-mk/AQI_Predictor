@@ -1,0 +1,52 @@
+name: Historical AQI backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "First date to backfill (YYYY-MM-DD)"
+        required: true
+        type: string
+      end_date:
+        description: "Last date to backfill (YYYY-MM-DD)"
+        required: true
+        type: string
+      dry_run:
+        description: "Fetch and validate without writing to Hopsworks"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas numpy python-dotenv "hopsworks[python]" pyarrow
+
+      - name: Run historical backfill
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+        run: |
+          args=(
+            --start-date "${{ inputs.start_date }}"
+            --end-date "${{ inputs.end_date }}"
+          )
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          python src/workflows/historical_backfill.py "${args[@]}"
