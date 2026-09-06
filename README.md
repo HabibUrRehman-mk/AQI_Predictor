@@ -179,8 +179,8 @@ CatBoost led on every metric at 24h even before tuning, which is why it — alon
 |---|---|---|---|---|---|
 | 24h | CatBoost (tuned) | **14.04** | **0.385** | 17.31 | −0.046 |
 | 24h | XGBoost (tuned) | 14.40 | 0.332 | 17.31 | −0.046 |
-| 48h | CatBoost (tuned) | **19.50** | −0.119 | 21.78 | −0.656 |
-| 72h | CatBoost (tuned) | **19.88** | −0.144 | 21.83 | −0.756 |
+| 48h | CatBoost (tuned) | **19.50** | 0.119 | 21.78 | −0.656 |
+| 72h | CatBoost (tuned) | **19.88** | 0.144 | 21.83 | −0.756 |
 
 Tuned CatBoost beats the persistence baseline at every horizon on this test window — meaningfully at 24h, and by a smaller but still real margin at 48h/72h, where R² stays negative for both the model and the baseline (a genuinely hard regime: 3-day-ahead AQI in a city this volatile is close to the edge of what's predictable from these features alone).
 
@@ -251,7 +251,15 @@ Each model is registered with its own input/output schema and description (e.g. 
 ---
 
 ## Local Setup
-Coming
+
+1. Setup your `.env` values in the root directory.
+2. Navigate to the `src` directory and run Docker Compose:
+
+```bash
+cd src
+docker compose up --build
+
+3. Application will be running at (http://localhost:8080/)[http://localhost:8080/]
 
 ## Environment Variables
 
