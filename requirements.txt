@@ -24,3 +24,4 @@ url-normalize==3.0.0
 urllib3==2.7.0
 urllib3-future==2.23.900
 wassima==2.1.2
+pytest>=8.0
